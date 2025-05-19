@@ -20,6 +20,6 @@ class User(Base):
         Boolean, default=True, server_default=text("TRUE")
     )
     created_at: Mapped[datetime] = mapped_column(
-        default=datetime.utcnow(),
+        default=datetime.utcnow,
         server_default=func.now(),
     )

@@ -25,6 +25,8 @@ class UserRegisterScheme(UserSchema):
     # Валидация пароля
     @field_validator("password")
     def validate_password(cls, v: str) -> str:
+        if len(v) < 8:  # минимум 8 символов
+            raise ValueError("Пароль должен содержать не менее 8 символов.")
         if not re.search(r"\d", v):
             raise ValueError("Содержит не менее 1 цифры.")
         if not re.search(r'[!@#$%^&*(),.?":{}|<>]', v):

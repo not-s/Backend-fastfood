@@ -1,6 +1,7 @@
 from fastapi import HTTPException, status
 from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 
 from auth import utils as auth_utils
 import logging
@@ -14,12 +15,10 @@ async def validation_user_registration(
     session: AsyncSession,
 ) -> None:
     # проверка на существующего пользователя
-    stmt = select(User).where(
-        or_(
-            User.email == user_data.email,
-            User.phone == user_data.phone if user_data.phone else False,
-        )
-    )
+    conditions = [User.email == user_data.email]
+    if user_data.phone:
+        conditions.append(User.phone == user_data.phone)
+    stmt = select(User).where(or_(*conditions))
 
     existing_user = await session.execute(stmt)
     existing_user = existing_user.scalar()
@@ -63,6 +62,11 @@ async def user_registration(
 
         logging.info(f"Пользователь с email {user.email} успешно зарегистрирован")
         return user
+    except IntegrityError as e:
+        await session.rollback()
+        logging.error(f"Ошибка целостности данных: {str(e)}")
+        raise HTTPException(...)
+
     except Exception as e:
         await session.rollback()
         logging.error(f"Ошибка при регистрации пользователя: {str(e)}")
