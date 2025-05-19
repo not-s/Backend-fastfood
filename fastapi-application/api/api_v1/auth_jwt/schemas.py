@@ -1,0 +1,43 @@
+from pydantic import BaseModel, model_validator, field_validator, EmailStr
+import re
+from datetime import datetime, date
+
+
+class UserSchema(BaseModel):
+    email: EmailStr
+    password: str
+    birthday: date | None = None
+    username: str | None = None
+    family_name: str | None = None
+    phone: str | None = None
+
+
+class UserRead(UserSchema):
+
+    is_active: bool
+    created_at: datetime
+
+
+class UserRegisterScheme(UserSchema):
+
+    c_password: str
+
+    # Валидация пароля
+    @field_validator("password")
+    def validate_password(cls, v: str) -> str:
+        if not re.search(r"\d", v):
+            raise ValueError("Содержит не менее 1 цифры.")
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', v):
+            raise ValueError("Содержит не менее 1 спец. символа.")
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("Содержит не менее чем по 1 символу в верхнем регистре.")
+        if not re.search(r"[a-z]", v):
+            raise ValueError("Содержит не менее чем по 1 символу в нижнем регистре.")
+        return v
+
+    # Проверка совпадения паролей
+    @model_validator(mode="after")
+    def check_passwords_match(self):
+        if self.password != self.c_password:
+            raise ValueError("Пароли не совпадают!")
+        return self
