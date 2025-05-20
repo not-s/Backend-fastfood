@@ -1,15 +1,16 @@
 from datetime import date, datetime
 
 from pydantic import EmailStr
-from sqlalchemy import String, func, text, Date, Boolean, DateTime
+from sqlalchemy import String, func, text, Date, Boolean
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 
 
 from . import Base
+from ..mixins.int_id_pk import IntIdMixin
 
 
-class User(Base):
-    email: Mapped[EmailStr] = mapped_column(String(254), primary_key=True)
+class User(IntIdMixin, Base):
+    email: Mapped[EmailStr] = mapped_column(String(254), unique=True)
     password: Mapped[str] = mapped_column(String(100))
 
     username: Mapped[str] = mapped_column(String(100), nullable=True)
@@ -23,3 +24,6 @@ class User(Base):
         default=datetime.utcnow,
         server_default=func.now(),
     )
+
+
+
