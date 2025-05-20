@@ -11,7 +11,6 @@ from datetime import datetime, date
 
 class UserSchema(BaseModel):
     email: EmailStr
-    password: str
     birthday: date | None = None
     username: str | None = None
     family_name: str | None = None
@@ -48,7 +47,7 @@ class LoginResponseScheme(BaseModel):
 
 
 class UserRegisterScheme(UserSchema):
-
+    password: str
     c_password: str
 
     # Валидация пароля

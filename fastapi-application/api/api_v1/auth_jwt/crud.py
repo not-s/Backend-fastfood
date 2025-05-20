@@ -1,49 +1,46 @@
-from fastapi import HTTPException, status
-from sqlalchemy import select, or_
+from fastapi import HTTPException
+from fastapi.security import (
+    HTTPAuthorizationCredentials,
+)
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
+from starlette import status
 
 from auth import utils as auth_utils
 import logging
 import uuid
 
 from core.models import User, Token
-from .schemas import UserRegisterScheme, UserLoginScheme, LoginResponseScheme
+from .crud_validation import (
+    auth_user_validate,
+    token_count_check,
+    validation_user_registration,
+    get_current_token_payload,
+)
+from .schemas import (
+    UserRegisterScheme,
+    UserLoginScheme,
+    LoginResponseScheme,
+    UserRead,
+)
 
 
 async def authorization_user(
     user_data: UserLoginScheme,
     session: AsyncSession,
 ):
-    # Проверка пользователя
-    unauthed_exc = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="invalid username or password",
-    )
-    stmt = select(User).where(User.email == user_data.email)
-    if not (user := await session.scalar(stmt)):
-        raise unauthed_exc
-    elif not auth_utils.validate_password(
-        password=user_data.password,
-        hashed_password=user.password,
-    ):
-        raise unauthed_exc
 
+    user = await auth_user_validate(user_data, session)
     # Создание JWT
     jwt_payload = {
-        "sub": user.id,
+        "sub": user.email,
         "email": user.email,
         "jti": str(uuid.uuid4()),
     }
     token = auth_utils.encode_jwt(jwt_payload)
 
-    # Проверка количество токенов
-    token_query = await session.execute(select(Token).where(Token.user_id == user.id))
-    active_tokens = token_query.scalars().all()
-
-    if len(active_tokens) >= 10:
-        for user_data_token in active_tokens[: len(active_tokens) - 9]:
-            await session.delete(user_data_token)
+    await token_count_check(user, session)
 
     # сохранение jti токена
     try:
@@ -62,41 +59,16 @@ async def authorization_user(
         )
 
     return LoginResponseScheme(
-        access_token=token, email=user.email, token_type="bearer"
+        access_token=token,
+        email=user.email,
+        token_type="bearer",
     )
-
-
-async def validation_user_registration(
-    user_data: UserRegisterScheme,
-    session: AsyncSession,
-) -> None:
-    # проверка на существующего пользователя
-    conditions = [User.email == user_data.email]
-    if user_data.phone:
-        conditions.append(User.phone == user_data.phone)
-    stmt = select(User).where(or_(*conditions))
-
-    existing_user = await session.execute(stmt)
-    existing_user = existing_user.scalar()
-    if existing_user is not None:
-        detail = "Email уже зарегистрирован"
-        if (
-            existing_user.email != user_data.email
-            and user_data.phone
-            and existing_user.phone == user_data.phone
-        ):
-            detail = "Номер телефона уже зарегистрирован"
-
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=detail,
-        )
 
 
 async def user_registration(
     user_data: UserRegisterScheme,
     session: AsyncSession,
-) -> User:
+) -> UserRead:
     await validation_user_registration(
         user_data=user_data,
         session=session,
@@ -117,7 +89,16 @@ async def user_registration(
         await session.refresh(user)
 
         logging.info(f"Пользователь с email {user.email} успешно зарегистрирован")
-        return user
+        user_result = UserRead(
+            email=user.email,
+            birthday=user.birthday,
+            username=user.username,
+            family_name=user.family_name,
+            phone=user.phone,
+            is_active=user.is_active,
+            created_at=user.created_at,
+        )
+        return user_result
     except IntegrityError as e:
         await session.rollback()
         logging.error(f"Ошибка целостности данных: {str(e)}")
@@ -133,3 +114,56 @@ async def user_registration(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Произошла ошибка при регистрации пользователя",
         )
+
+
+async def get_current_auth_user(
+    session: AsyncSession,
+    credentials: HTTPAuthorizationCredentials,
+) -> UserRead:
+    payload = get_current_token_payload(credentials=credentials)
+    stmt = select(Token).where(Token.jti == payload["jti"])
+    token_result = await session.execute(stmt)
+    token = token_result.scalar_one_or_none()
+
+    if token is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Токен недействителен (не найден в базе данных)",
+        )
+
+    stmt = select(User).where(User.email == payload["email"])
+    if user := await session.scalar(stmt):
+        user_result = UserRead(
+            email=user.email,
+            birthday=user.birthday,
+            username=user.username,
+            family_name=user.family_name,
+            phone=user.phone,
+            is_active=user.is_active,
+            created_at=user.created_at,
+        )
+        return user_result
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Токен недействителен (пользователь не найден)",
+        )
+
+
+async def logout_user(
+    session: AsyncSession,
+    credentials: HTTPAuthorizationCredentials,
+):
+    payload = get_current_token_payload(credentials=credentials)
+    stmt = select(Token).where(Token.jti == payload["jti"])
+    token_result = await session.execute(stmt)
+    token_to_delete = token_result.scalar_one_or_none()
+
+    if token_to_delete is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Токен недействителен или уже был использован для выхода",
+        )
+
+    await session.delete(token_to_delete)
+    await session.commit()
