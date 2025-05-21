@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from typing import TYPE_CHECKING
 
 from pydantic import EmailStr
 from sqlalchemy import String, func, text, Date, Boolean
@@ -6,10 +7,14 @@ from sqlalchemy.orm import mapped_column, Mapped, relationship
 
 
 from . import Base
-from ..mixins.int_id_pk import IntIdMixin
+from core.models.mixins import IntIdPkMixin
+
+if TYPE_CHECKING:
+    from .cart import Cart
 
 
-class User(IntIdMixin, Base):
+
+class User(IntIdPkMixin, Base):
     email: Mapped[EmailStr] = mapped_column(String(254), unique=True)
     password: Mapped[str] = mapped_column(String(100))
 
@@ -24,6 +29,7 @@ class User(IntIdMixin, Base):
         default=datetime.utcnow,
         server_default=func.now(),
     )
+    cart: Mapped["Cart"] = relationship(back_populates="user")
 
 
 

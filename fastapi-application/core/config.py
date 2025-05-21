@@ -16,6 +16,7 @@ class RunConfig(BaseModel):
 class ApiV1Prefix(BaseModel):
     prefix: str = "/v1"
     auth: str = "/auth"
+    menu: str = "/menu"
 
 
 class ApiPrefix(BaseModel):
@@ -45,6 +46,7 @@ class AuthJWT(BaseModel):
     algorithm: str = "RS256"
     access_token_expire_minutes: int = 15  # время жизни токена
     refresh_token_expire_days: int = 30
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
