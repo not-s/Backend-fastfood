@@ -8,6 +8,10 @@ __all__ = {
     "Category",
     "OptionGroup",
     "Option",
+    "Order",
+    "OrderFoodAssociation",
+    "Payment",
+    "Address",
 }
 
 from .base import Base
@@ -19,3 +23,4 @@ from .cart_food_association import CartFoodAssociation
 from .category import Category
 from .option_group import OptionGroup
 from .option import Option
+from .models import Order, OrderFoodAssociation, Payment, Address
