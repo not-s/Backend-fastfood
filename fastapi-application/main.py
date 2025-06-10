@@ -22,6 +22,9 @@ main_app = FastAPI(
 )
 main_app.include_router(router=api_router)
 
+@main_app.get("/")
+async def root():
+    return {"message": "Hello, World and FastAPI!"}
 
 if __name__ == "__main__":
     uvicorn.run(

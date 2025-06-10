@@ -8,7 +8,7 @@ from .cart.cart_views import router as cart_router
 
 router = APIRouter(
     prefix=settings.api.v1.prefix,
-    tags=["api V1"],
+    # tags=["api V1"],
 )
 router.include_router(
     router=auth_jwt_router,

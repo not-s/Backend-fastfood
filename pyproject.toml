@@ -16,4 +16,6 @@ bcrypt = "^4.3.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^25.1.0"
+pytest = "^8.4.0"
+
 

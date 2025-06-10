@@ -10,7 +10,7 @@ class RunConfig(BaseModel):
     app: str = "main:main_app"
     host: str = "0.0.0.0"
     port: int = 8000
-    reload: bool = False
+    reload: bool = True
 
 
 class ApiV1Prefix(BaseModel):
@@ -45,7 +45,7 @@ class AuthJWT(BaseModel):
     private_key_path: Path = BASE_DIR / "certs" / "jwt-private.pem"
     public_key_path: Path = BASE_DIR / "certs" / "jwt-public.pem"
     algorithm: str = "RS256"
-    access_token_expire_minutes: int = 15  # время жизни токена
+    access_token_expire_minutes: int = 1500  # время жизни токена
     refresh_token_expire_days: int = 30
 
 
