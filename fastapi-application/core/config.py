@@ -10,7 +10,7 @@ class RunConfig(BaseModel):
     app: str = "main:main_app"
     host: str = "0.0.0.0"
     port: int = 8000
-    reload: bool = True
+    reload: bool = False
 
 
 class ApiV1Prefix(BaseModel):
@@ -45,8 +45,17 @@ class AuthJWT(BaseModel):
     private_key_path: Path = BASE_DIR / "certs" / "jwt-private.pem"
     public_key_path: Path = BASE_DIR / "certs" / "jwt-public.pem"
     algorithm: str = "RS256"
-    access_token_expire_minutes: int = 1500  # время жизни токена
+    access_token_expire_minutes: int = 300  # время жизни токена
     refresh_token_expire_days: int = 30
+    max_token_count: int
+
+
+class SMTPConfig(BaseModel):
+    server: str
+    port: int
+    user: str
+    password: str
+    email: str
 
 
 class Settings(BaseSettings):
@@ -59,7 +68,8 @@ class Settings(BaseSettings):
     run: RunConfig = RunConfig()
     api: ApiPrefix = ApiPrefix()
     db: DatabaseConfig
-    auth_jwt: AuthJWT = AuthJWT()
+    auth_jwt: AuthJWT
+    smtp: SMTPConfig
 
 
 settings = Settings()

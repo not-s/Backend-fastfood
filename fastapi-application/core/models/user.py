@@ -16,10 +16,13 @@ if TYPE_CHECKING:
 
 class User(IntIdPkMixin, Base):
     email: Mapped[EmailStr] = mapped_column(String(254), unique=True)
-    password: Mapped[str] = mapped_column(String(100))
 
-    username: Mapped[str] = mapped_column(String(100), nullable=True)
-    family_name: Mapped[str] = mapped_column(String(100), nullable=True)
+    verification_code: Mapped[str] = mapped_column(String(40), nullable=True)
+    verification_code_expires_at: Mapped[datetime] = mapped_column(nullable=True)
+
+    password: Mapped[str] = mapped_column(String(100), nullable=True)
+    first_name: Mapped[str] = mapped_column(String(100), nullable=True)
+    last_name: Mapped[str] = mapped_column(String(100), nullable=True)
     birthday: Mapped[date] = mapped_column(Date, nullable=True)
     phone: Mapped[str] = mapped_column(String(20), nullable=True, unique=True)
     is_active: Mapped[bool] = mapped_column(
@@ -30,6 +33,13 @@ class User(IntIdPkMixin, Base):
         server_default=func.now(),
     )
     cart: Mapped["Cart"] = relationship(back_populates="user")
+
+    def to_dict(self) -> dict:
+        return {
+            "email": self.email,
+
+        }
+
 
 
 
